@@ -169,12 +169,14 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 // ============================================================
 // KONFIGURASI — hanya ubah bagian ini
 // ============================================================
-var CDN_URLS = {
-  '1': 'https://vidoway.click/file',
-  '2': 'https://cdn.vidoway.click/file',
+var CDN_MAPS = {
+  'b': 'https://cdn.vidoway.click/file',
+  'c': 'https://cdn2.vidoway.click/file', // nanti
 };
-var cdnParam   = new URLSearchParams(window.location.search).get('cdn') || '1';
-var CDN_BASE_URL = CDN_URLS[cdnParam] || CDN_URLS['1'];
+var fileParts = videoFile ? videoFile.split('/') : [];
+var cdnKey    = fileParts.length > 1 && CDN_MAPS[fileParts[0]] ? fileParts[0] : null;
+var CDN_BASE_URL = cdnKey ? CDN_MAPS[cdnKey] : 'https://vidoway.click/file';
+var videoFile    = cdnKey ? fileParts.slice(1).join('/') : videoFile;
 
 // Banner iklan dalam player (overlay sebelum video)
 var ADS_ENABLED        = false;  // true = aktif, false = nonaktif
