@@ -173,10 +173,13 @@ var CDN_MAPS = {
   'b': 'https://cdn.vidoway.click/file',
   'c': 'https://cdn2.vidoway.click/file', // nanti
 };
-var fileParts = videoFile ? videoFile.split('/') : [];
-var cdnKey    = fileParts.length > 1 && CDN_MAPS[fileParts[0]] ? fileParts[0] : null;
+var urlParams    = new URLSearchParams(window.location.search);
+var rawFile      = urlParams.get('v') || '';
+var parts        = rawFile.split('/');
+var cdnKey       = parts.length > 1 && CDN_MAPS[parts[0]] ? parts[0] : null;
 var CDN_BASE_URL = cdnKey ? CDN_MAPS[cdnKey] : 'https://vidoway.click/file';
-var videoFile    = cdnKey ? fileParts.slice(1).join('/') : videoFile;
+var videoFile    = cdnKey ? parts.slice(1).join('/') : rawFile;
+if(videoFile){ vid.src = CDN_BASE_URL+'/'+videoFile; vid.load(); }
 
 // Banner iklan dalam player (overlay sebelum video)
 var ADS_ENABLED        = false;  // true = aktif, false = nonaktif
