@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vidoway Player</title>
+<!-- Google IMA SDK untuk VAST -->
+<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
@@ -110,6 +112,9 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
     <source src="" type="video/mp4"/>
   </video>
 
+  <!-- Container iklan VAST (IMA SDK) -->
+  <div id="ad-container" style="position:absolute;inset:0;z-index:25;pointer-events:none;"></div>
+
   <div class="grad"></div>
 
   <div class="play-center">
@@ -182,6 +187,10 @@ var SKIP_AFTER_SECONDS = 5;
 // Reset otomatis saat halaman di-refresh atau ditutup
 var SMARTLINK_ENABLED  = true;  // true = aktif, false = nonaktif
 var SMARTLINK_URL      = 'https://omg10.com/4/11946542';
+
+// VAST iklan video pre-roll (Google IMA SDK)
+var VAST_ENABLED = true;  // true = aktif, false = nonaktif
+var VAST_TAG_URL = 'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dlinear&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=';
 // ============================================================
 
 var vid          = document.getElementById('vid');
@@ -200,10 +209,60 @@ var volIcon      = document.getElementById('volIcon');
 var fsIcon       = document.getElementById('fsIcon');
 var loader       = document.getElementById('loader');
 var adShown      = false;
-var slFired      = false; // smartlink sudah fired untuk halaman ini
+var slFired      = false;
 var skipTimer    = null;
 var touchTimer   = null;
 var controlTimer = null;
+
+// IMA SDK variables
+var adContainer       = document.getElementById('ad-container');
+var adsLoader         = null;
+var adsManager        = null;
+var adDisplayContainer= null;
+var imaReady          = false;
+
+function initIMA(){
+  if(!VAST_ENABLED||!window.google||!window.google.ima)return;
+  adDisplayContainer=new google.ima.AdDisplayContainer(adContainer,vid);
+  adsLoader=new google.ima.AdsLoader(adDisplayContainer);
+  adsLoader.addEventListener(google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,onAdsManagerLoaded);
+  adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
+  imaReady=true;
+}
+function requestAds(){
+  if(!imaReady)return;
+  adDisplayContainer.initialize();
+  var req=new google.ima.AdsRequest();
+  req.adTagUrl=VAST_TAG_URL;
+  req.linearAdSlotWidth=wrap.offsetWidth;
+  req.linearAdSlotHeight=wrap.offsetHeight;
+  req.nonLinearAdSlotWidth=wrap.offsetWidth;
+  req.nonLinearAdSlotHeight=150;
+  adsLoader.requestAds(req);
+}
+function onAdsManagerLoaded(e){
+  adsManager=e.getAdsManager(vid);
+  adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
+  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,function(){vid.pause();});
+  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,function(){
+    adContainer.style.pointerEvents='none';vid.play();
+  });
+  adsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED,function(){
+    adContainer.style.pointerEvents='none';
+  });
+  try{
+    adContainer.style.pointerEvents='all';
+    adsManager.init(wrap.offsetWidth,wrap.offsetHeight,google.ima.ViewMode.NORMAL);
+    adsManager.start();
+  }catch(e){vid.play();}
+}
+function onAdError(e){
+  console.log('Ad error:',e.getError());
+  adContainer.style.pointerEvents='none';
+  if(adsManager){adsManager.destroy();adsManager=null;}
+  vid.play();
+}
+window.addEventListener('load',initIMA);
 
 var ICON_FS   = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="#fff"/>';
 var ICON_EXIT = '<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="#fff"/>';
@@ -263,10 +322,16 @@ skipBtn.addEventListener('click',function(){
 
 // ── Play / Pause ──
 function tryPlay(){
-  // Smartlink: trigger 1x per halaman load, reset saat refresh
+  // Smartlink 1x per halaman
   if(SMARTLINK_ENABLED && !slFired){
-    slFired = true;
-    window.open(SMARTLINK_URL, '_blank');
+    slFired=true;
+    window.open(SMARTLINK_URL,'_blank');
+  }
+  // VAST iklan video
+  if(VAST_ENABLED && imaReady && !adShown){
+    adShown=true;
+    requestAds();
+    return;
   }
   // Banner iklan
   if(ADS_ENABLED && !adShown){ adShown=true; showAd(); return; }
@@ -279,13 +344,13 @@ function tryPlay(){
 }
 
 wrap.addEventListener('click',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay'))return;
+  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#ad-container'))return;
   tryPlay();
 });
 
 var lastTap=0;
 wrap.addEventListener('touchstart',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay'))return;
+  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#ad-container'))return;
   showControls();
   var now=Date.now();
   if(now-lastTap<300){tryPlay();lastTap=0;}
@@ -402,6 +467,7 @@ function updateFullscreenSize(){
     if(screen.orientation&&screen.orientation.unlock){try{screen.orientation.unlock();}catch(e){}}
   }
   fsIcon.innerHTML=(document.fullscreenElement||document.webkitFullscreenElement)?ICON_EXIT:ICON_FS;
+  if(adsManager){adsManager.resize(wrap.offsetWidth,wrap.offsetHeight,google.ima.ViewMode.NORMAL);}
 }
 function onFsChange(){
   var isFs=document.fullscreenElement||document.webkitFullscreenElement;
