@@ -171,6 +171,9 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 </div>
 
 <script>
+  // Redirect ke homepage kalau tidak ada parameter ?v=
+var _check = new URLSearchParams(window.location.search).get('v') || '';
+if(!_check){ window.location.replace('/'); }
 // ============================================================
 // KONFIGURASI — hanya ubah bagian ini
 // ============================================================
