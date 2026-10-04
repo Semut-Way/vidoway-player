@@ -229,6 +229,7 @@ function initIMA(){
   adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
   imaReady=true;
 }
+
 function requestAds(){
   if(!imaReady)return;
   adDisplayContainer.initialize();
@@ -240,28 +241,59 @@ function requestAds(){
   req.nonLinearAdSlotHeight=150;
   adsLoader.requestAds(req);
 }
+
 function onAdsManagerLoaded(e){
   adsManager=e.getAdsManager(vid);
   adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
-  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,function(){vid.pause();});
-  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,function(){
-    adContainer.style.pointerEvents='none';vid.play();
+
+  // Pause video saat iklan mulai
+  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,function(){
+    vid.pause();
   });
+
+  // Lanjutkan video setelah iklan selesai
+  adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,function(){
+    adContainer.style.pointerEvents='none';
+    vid.play();
+  });
+
+  // Semua iklan selesai
   adsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED,function(){
     adContainer.style.pointerEvents='none';
+    if(adsManager){adsManager.destroy();adsManager=null;}
   });
+
+  // FIX: Setelah user klik iklan (tab baru terbuka), resume iklan
+  adsManager.addEventListener(google.ima.AdEvent.Type.AD_BUFFERING,function(){});
+  
+  // FIX: Handle paused state setelah klik iklan
+  document.addEventListener('visibilitychange',function(){
+    if(!adsManager)return;
+    if(document.hidden){
+      // Tab tidak aktif (user klik iklan ke tab baru)
+      try{ adsManager.pause(); }catch(e){}
+    } else {
+      // Tab aktif kembali → resume iklan
+      try{ adsManager.resume(); }catch(e){}
+    }
+  });
+
   try{
     adContainer.style.pointerEvents='all';
     adsManager.init(wrap.offsetWidth,wrap.offsetHeight,google.ima.ViewMode.NORMAL);
     adsManager.start();
-  }catch(e){vid.play();}
+  }catch(e){
+    vid.play();
+  }
 }
+
 function onAdError(e){
   console.log('Ad error:',e.getError());
   adContainer.style.pointerEvents='none';
   if(adsManager){adsManager.destroy();adsManager=null;}
   vid.play();
 }
+
 window.addEventListener('load',initIMA);
 
 var ICON_FS   = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="#fff"/>';
