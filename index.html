@@ -3,13 +3,152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="kadam-verification" content="kadam8230bf8b6787f14bba9a13e5c504834e" />
-<title>Vidoway Player</title>
+<meta name="description" content="Vidoway - Fast and reliable video streaming platform. Watch and share videos instantly with our high-performance CDN delivery network.">
+<meta name="keywords" content="video streaming, video player, CDN, video hosting, watch videos online">
+<meta property="og:title" content="Vidoway - Video Streaming Platform">
+<meta property="og:description" content="Fast and reliable video streaming platform powered by global CDN.">
+<meta property="og:type" content="website">
+<title>Vidoway - Video Streaming Platform</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--red:#dc2626;--dark:#0a0a0a;--card:#111;--border:rgba(255,255,255,0.08);--text:rgba(255,255,255,0.7);}
+body{background:var(--dark);color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;}
+a{color:inherit;text-decoration:none;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,10,10,0.95);backdrop-filter:blur(10px);z-index:100;}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--red);}
+.nav-links{display:flex;gap:28px;font-size:14px;color:var(--text);}
+.nav-links a:hover{color:#fff;}
+.nav-btn{background:var(--red);color:#fff;padding:8px 20px;border-radius:99px;font-size:14px;font-weight:600;}
+.hero{text-align:center;padding:90px 20px 70px;background:radial-gradient(ellipse at top,rgba(220,38,38,0.12) 0%,transparent 70%);}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--red);padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:24px;letter-spacing:.5px;}
+.hero h1{font-size:clamp(32px,6vw,64px);font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px;}
+.hero h1 span{color:var(--red);}
+.hero p{font-size:18px;color:var(--text);max-width:560px;margin:0 auto 36px;}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn-primary{background:var(--red);color:#fff;padding:12px 28px;border-radius:99px;font-weight:600;font-size:15px;}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#fff;padding:12px 28px;border-radius:99px;font-weight:600;font-size:15px;border:1px solid var(--border);}
+.stats{display:flex;justify-content:center;gap:60px;padding:50px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.stat{text-align:center;}
+.stat-num{font-size:36px;font-weight:800;}
+.stat-num span{color:var(--red);}
+.stat-label{font-size:13px;color:var(--text);margin-top:4px;}
+.section{padding:80px 40px;max-width:1100px;margin:0 auto;}
+.section-title{font-size:clamp(24px,4vw,36px);font-weight:800;text-align:center;margin-bottom:12px;letter-spacing:-0.5px;}
+.section-sub{text-align:center;color:var(--text);margin-bottom:50px;font-size:16px;}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+.feature-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;}
+.feature-icon{width:46px;height:46px;background:rgba(220,38,38,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px;}
+.feature-card h3{font-size:17px;font-weight:700;margin-bottom:8px;}
+.feature-card p{font-size:14px;color:var(--text);line-height:1.6;}
+.how{background:rgba(255,255,255,0.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:30px;}
+.step{text-align:center;padding:20px;}
+.step-num{width:48px;height:48px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin:0 auto 16px;}
+.step h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+.step p{font-size:14px;color:var(--text);}
+.testimonials{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+.testi{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;}
+.testi-text{font-size:14px;color:var(--text);line-height:1.7;margin-bottom:16px;}
+.testi-author{display:flex;align-items:center;gap:12px;}
+.testi-avatar{width:36px;height:36px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+.testi-name{font-size:14px;font-weight:600;}
+.testi-role{font-size:12px;color:var(--text);}
+.stars{color:#f59e0b;font-size:13px;margin-bottom:12px;}
+.cta{text-align:center;padding:80px 20px;background:radial-gradient(ellipse at center,rgba(220,38,38,0.1) 0%,transparent 70%);}
+.cta h2{font-size:clamp(24px,4vw,42px);font-weight:800;margin-bottom:16px;letter-spacing:-0.5px;}
+.cta p{color:var(--text);margin-bottom:32px;font-size:16px;}
+footer{border-top:1px solid var(--border);padding:40px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;}
+.footer-logo{font-size:18px;font-weight:800;}
+.footer-logo span{color:var(--red);}
+.footer-links{display:flex;gap:24px;font-size:13px;color:var(--text);}
+.footer-links a:hover{color:#fff;}
+.footer-copy{font-size:13px;color:var(--text);}
+@media(max-width:600px){nav{padding:14px 20px;}.nav-links{display:none;}.stats{gap:30px;}.section{padding:60px 20px;}footer{flex-direction:column;text-align:center;}}
+</style>
 </head>
-<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;">
-<div style="text-align:center;">
-  <div style="font-size:32px;font-weight:700;color:#fff;">vido<span style="color:#dc2626;">way</span></div>
-  <div style="font-size:13px;color:rgba(255,255,255,0.3);margin-top:8px;">Video Delivery Network</div>
+<body>
+
+<nav>
+  <div class="logo">vido<span>way</span></div>
+  <div class="nav-links">
+    <a href="#">Features</a>
+    <a href="#">How it works</a>
+    <a href="#">About</a>
+    <a href="#">Contact</a>
+  </div>
+  <a href="#" class="nav-btn">Get Started</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">🚀 Fast & Reliable Video Delivery</div>
+  <h1>Stream Videos at<br><span>Lightning Speed</span></h1>
+  <p>Vidoway delivers your videos to viewers worldwide with ultra-low latency and 99.9% uptime. Powered by global CDN infrastructure.</p>
+  <div class="hero-btns">
+    <a href="#" class="btn-primary">Start Streaming Free</a>
+    <a href="#" class="btn-secondary">Learn More</a>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num">99<span>.9%</span></div><div class="stat-label">Uptime Guarantee</div></div>
+  <div class="stat"><div class="stat-num">150<span>+</span></div><div class="stat-label">Global Edge Locations</div></div>
+  <div class="stat"><div class="stat-num">10<span>M+</span></div><div class="stat-label">Videos Delivered</div></div>
+  <div class="stat"><div class="stat-num">50<span>ms</span></div><div class="stat-label">Average Latency</div></div>
 </div>
+
+<section class="section">
+  <h2 class="section-title">Everything You Need to Stream</h2>
+  <p class="section-sub">Powerful features built for content creators and developers</p>
+  <div class="features">
+    <div class="feature-card"><div class="feature-icon">⚡</div><h3>Ultra-Fast CDN</h3><p>Deliver videos from edge servers closest to your viewers for the fastest possible streaming experience globally.</p></div>
+    <div class="feature-card"><div class="feature-icon">🔒</div><h3>Secure Hosting</h3><p>Your videos are protected with advanced security. Control who can embed and access your content at all times.</p></div>
+    <div class="feature-card"><div class="feature-icon">📱</div><h3>Any Device</h3><p>Our adaptive player works perfectly on desktop, tablet, and mobile. Smooth playback on any screen size.</p></div>
+    <div class="feature-card"><div class="feature-icon">🌍</div><h3>Global Reach</h3><p>Edge servers across Asia, Europe, and Americas ensure your content reaches viewers worldwide with minimal buffering.</p></div>
+    <div class="feature-card"><div class="feature-icon">🎯</div><h3>Easy Embedding</h3><p>Embed videos anywhere with a single line of code. Works seamlessly with WordPress, Blogger, and any website.</p></div>
+    <div class="feature-card"><div class="feature-icon">📊</div><h3>Reliable Uptime</h3><p>Built on enterprise-grade infrastructure with 99.9% uptime so your videos are always available to viewers.</p></div>
+  </div>
+</section>
+
+<section class="how">
+  <div class="section">
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">Get your videos online in minutes</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h3>Upload Your Video</h3><p>Upload your video files to our secure cloud storage. Supports MP4, WebM, and more formats.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>Get Your Link</h3><p>Instantly receive a CDN-powered URL for your video, ready to share or embed anywhere online.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Embed Anywhere</h3><p>Copy the embed code and paste it into your website, blog, or any social media platform.</p></div>
+      <div class="step"><div class="step-num">4</div><h3>Reach Your Audience</h3><p>Your viewers enjoy smooth, fast video playback delivered from the nearest edge server worldwide.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section-title">Trusted by Content Creators</h2>
+  <p class="section-sub">See what our users say about Vidoway</p>
+  <div class="testimonials">
+    <div class="testi"><div class="stars">★★★★★</div><p class="testi-text">"Vidoway transformed how I deliver video content to my audience. The loading speed is incredible and my viewers love the seamless experience."</p><div class="testi-author"><div class="testi-avatar">A</div><div><div class="testi-name">Alex Thompson</div><div class="testi-role">Content Creator</div></div></div></div>
+    <div class="testi"><div class="stars">★★★★★</div><p class="testi-text">"The embed feature is incredibly easy to use. I integrated Vidoway into my WordPress site in minutes and the performance has been outstanding."</p><div class="testi-author"><div class="testi-avatar">S</div><div><div class="testi-name">Sarah Chen</div><div class="testi-role">Web Developer</div></div></div></div>
+    <div class="testi"><div class="stars">★★★★★</div><p class="testi-text">"Fast delivery, reliable uptime, and great support. Vidoway is the best video CDN solution I've found for my content website."</p><div class="testi-author"><div class="testi-avatar">M</div><div><div class="testi-name">Marco Rivera</div><div class="testi-role">Blogger</div></div></div></div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Start Streaming Today</h2>
+  <p>Join thousands of content creators who trust Vidoway for fast, reliable video delivery.</p>
+  <a href="#" class="btn-primary">Get Started for Free</a>
+</section>
+
+<footer>
+  <div class="footer-logo">vido<span>way</span></div>
+  <div class="footer-links">
+    <a href="#">About</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Contact</a>
+  </div>
+  <div class="footer-copy">© 2026 Vidoway. All rights reserved.</div>
+</footer>
+
 </body>
 </html>
