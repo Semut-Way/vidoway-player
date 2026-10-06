@@ -242,6 +242,11 @@ function requestAds(){
   req.linearAdSlotHeight=wrap.offsetHeight;
   req.nonLinearAdSlotWidth=wrap.offsetWidth;
   req.nonLinearAdSlotHeight=150;
+
+  // FIX: set muted untuk mobile autoplay
+  req.setAdWillAutoPlay(true);
+  req.setAdWillPlayMuted(false);
+
   adsLoader.requestAds(req);
 }
 
@@ -284,6 +289,16 @@ function onAdsManagerLoaded(e){
   try{
     adContainer.style.pointerEvents='all';
     adsManager.init(wrap.offsetWidth,wrap.offsetHeight,google.ima.ViewMode.NORMAL);
+
+    // FIX: handle mobile autoplay
+    var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if(isMobile){
+      adsManager.setVolume(0); // muted dulu supaya autoplay jalan
+      setTimeout(function(){
+        if(adsManager)adsManager.setVolume(1); // unmute setelah iklan mulai
+      }, 500);
+    }
+
     adsManager.start();
   }catch(e){
     vid.play();
