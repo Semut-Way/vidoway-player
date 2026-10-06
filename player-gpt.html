@@ -105,23 +105,18 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 
 
 /* VAST / Google IMA */
+/*
+   Penting untuk mobile: container IMA harus transparan.
+   Video iklan linear memakai elemen <video id="vid"> yang sama.
+   Overlay hitam di atasnya akan membuat iPhone/Android terlihat blank.
+*/
 #vastAdContainer{
-  position:absolute;inset:0;z-index:30;background:#000;display:none;
+  position:absolute;inset:0;z-index:30;background:transparent;display:none;
   align-items:center;justify-content:center;overflow:hidden;
 }
 #vastAdContainer.show{display:flex;}
-#vastAdSlot{position:absolute;inset:0;}
-#vastAdSlot video{width:100%!important;height:100%!important;object-fit:contain!important;}
-#vastSkipBtn{
-  position:absolute;right:14px;bottom:58px;z-index:3;
-  border:0;border-radius:4px;padding:9px 14px;background:rgba(0,0,0,.75);
-  color:#fff;font-size:13px;cursor:pointer;display:none;
-}
-#vastSkipBtn.ready{display:block;}
-#vastCountdown{
-  position:absolute;right:14px;bottom:18px;z-index:3;color:#fff;
-  background:rgba(0,0,0,.65);padding:6px 9px;border-radius:4px;font-size:12px;
-}
+#vastAdSlot{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+#vastAdSlot > div{width:100%!important;height:100%!important;}
 </style>
 </head>
 <body>
@@ -158,8 +153,6 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
   <!-- VAST / IMA ad container -->
   <div id="vastAdContainer" aria-hidden="true">
     <div id="vastAdSlot"></div>
-    <button id="vastSkipBtn" type="button">Lewati iklan</button>
-    <span id="vastCountdown"></span>
   </div>
 
   <div class="controls">
@@ -246,8 +239,6 @@ var vastAdsManager         = null;
 var vastRequestInProgress  = false;
 var vastFinished            = false;
 var vastTimeoutTimer        = null;
-var vastSkipTimer           = null;
-var vastSkipAllowed         = false;
 
 
 var ICON_FS   = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="#fff"/>';
@@ -327,8 +318,6 @@ function startVast(){
   var container=document.getElementById('vastAdContainer');
   container.classList.add('show');
   container.setAttribute('aria-hidden','false');
-  document.getElementById('vastSkipBtn').classList.remove('ready');
-  document.getElementById('vastCountdown').textContent='Memuat iklan...';
 
   try{
     if(!vastAdDisplayContainer){
@@ -392,9 +381,6 @@ function onVastManagerLoaded(evt){
       google.ima.AdEvent.Type.ALL_ADS_COMPLETED,finishVast
     );
     vastAdsManager.addEventListener(
-      google.ima.AdEvent.Type.SKIPPABLE_STATE_CHANGED,onVastSkippable
-    );
-    vastAdsManager.addEventListener(
       google.ima.AdEvent.Type.STARTED,onVastStarted
     );
 
@@ -409,17 +395,7 @@ function onVastManagerLoaded(evt){
 }
 
 function onVastStarted(){
-  document.getElementById('vastCountdown').textContent='Advertisement';
-}
-
-function onVastSkippable(){
-  if(!vastAdsManager)return;
-  vastSkipAllowed=vastAdsManager.getAdSkippableState();
-  var btn=document.getElementById('vastSkipBtn');
-  if(vastSkipAllowed){
-    btn.classList.add('ready');
-    btn.textContent='Lewati iklan';
-  }
+  /* IMA menangani UI iklan/skip-nya sendiri. Tidak ada tombol skip custom. */
 }
 
 function onVastError(e){
@@ -432,28 +408,18 @@ function finishVast(){
   vastFinished=true;
   vastRequestInProgress=false;
   clearTimeout(vastTimeoutTimer);
-  clearInterval(vastSkipTimer);
-
   var container=document.getElementById('vastAdContainer');
   container.classList.remove('show');
   container.setAttribute('aria-hidden','true');
-  document.getElementById('vastCountdown').textContent='';
-  document.getElementById('vastSkipBtn').classList.remove('ready');
-
   if(vastAdsManager){
     try{vastAdsManager.destroy();}catch(e){}
     vastAdsManager=null;
   }
+  // AdDisplayContainer diinisialisasi ulang pada pemutaran berikutnya.
+  vastAdDisplayContainer=null;
 
   continuePlayback();
 }
-
-document.getElementById('vastSkipBtn').addEventListener('click',function(e){
-  e.stopPropagation();
-  if(vastAdsManager && vastSkipAllowed){
-    try{vastAdsManager.skip();}catch(err){finishVast();}
-  }
-});
 
 // Smartlink + VAST + banner
 function tryPlay(){
@@ -479,13 +445,15 @@ function tryPlay(){
 }
 
 wrap.addEventListener('click',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay'))return;
+  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#vastAdContainer'))return;
+  if(vastRequestInProgress)return;
   tryPlay();
 });
 
 var lastTap=0;
 wrap.addEventListener('touchstart',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay'))return;
+  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#vastAdContainer'))return;
+  if(vastRequestInProgress)return;
   showControls();
   var now=Date.now();
   if(now-lastTap<300){tryPlay();lastTap=0;}
@@ -497,7 +465,7 @@ wrap.addEventListener('touchstart',function(e){
   }
 },{passive:true});
 
-document.getElementById('playBtn').addEventListener('click',function(e){e.stopPropagation();tryPlay();});
+document.getElementById('playBtn').addEventListener('click',function(e){e.stopPropagation();if(vastRequestInProgress)return;tryPlay();});
 
 vid.addEventListener('play',function(){
   wrap.classList.remove('paused');wrap.classList.add('started');
@@ -510,6 +478,8 @@ vid.addEventListener('pause',function(){
   keepControlsVisible();
 });
 vid.addEventListener('timeupdate',function(){
+  // Selama VAST diputar, jangan tampilkan progress iklan sebagai progress video utama.
+  if(vastRequestInProgress)return;
   if(vid.duration){
     bar.style.width=(vid.currentTime/vid.duration*100)+'%';
     timeDisp.textContent=fmt(vid.currentTime)+' / '+fmt(vid.duration);
@@ -571,6 +541,18 @@ muteBtn.addEventListener('click',function(e){
   else{vid._lastVolume=vid.volume;vid.muted=true;volFill.style.width='0%';updateVolIcon(0,true);}
 });
 
+// Resize IMA mengikuti ukuran player/orientasi layar.
+function resizeVast(){
+  if(!vastAdsManager)return;
+  try{
+    vastAdsManager.resize(
+      Math.max(1,wrap.clientWidth),
+      Math.max(1,wrap.clientHeight),
+      google.ima.ViewMode.NORMAL
+    );
+  }catch(e){}
+}
+
 // Fullscreen
 document.getElementById('fsBtn').addEventListener('click',function(e){
   e.stopPropagation();
@@ -618,10 +600,10 @@ function onFsChange(){
 document.addEventListener('fullscreenchange',onFsChange);
 document.addEventListener('webkitfullscreenchange',onFsChange);
 window.addEventListener('orientationchange',function(){
-  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();setTimeout(updateFullscreenSize,300);}
+  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();setTimeout(updateFullscreenSize,300);} resizeVast();
 });
 window.addEventListener('resize',function(){
-  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();updateFullscreenSize();}
+  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();updateFullscreenSize();} resizeVast();
 });
 </script>
 </body>
