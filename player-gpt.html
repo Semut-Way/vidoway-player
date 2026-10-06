@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vidoway Player</title>
+<title>Vidoway Player + VAST</title>
+<script src="https://cdn.jsdelivr.net/npm/rmp-vast@17.2.0/dist/rmp-vast.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
@@ -18,6 +19,9 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
   height:100%;
 }
 .player-wrap video{width:100%;display:block;max-height:100vh;background:#000;object-fit:contain;}
+.rmp-content{position:relative;width:100%;height:100%;}
+.player-wrap.vast-ad-active .controls,.player-wrap.vast-ad-active .grad,.player-wrap.vast-ad-active .play-center{display:none !important;}
+.player-wrap.vast-ad-active{cursor:default;}
 .player-wrap.fs-sized video{max-height:100%;height:100%;}
 
 .grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.85) 0%,transparent 35%,transparent 65%,rgba(0,0,0,0.3) 100%);opacity:0;transition:opacity .3s;pointer-events:none;}
@@ -90,35 +94,13 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 .spacer{flex:1;}
 .fs-btn svg{width:18px;height:18px;}
 
-.ad-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:20;backdrop-filter:blur(4px);}
-.ad-overlay.hide{display:none;}
-.ad-box{width:92%;max-width:500px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;text-align:center;color:#fff;backdrop-filter:blur(10px);position:relative;}
-.ad-close{position:absolute;top:10px;right:12px;background:rgba(255,255,255,0.1);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
-.ad-close:hover{background:rgba(255,255,255,0.25);}
-.ad-label{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;}
-.ad-content{width:100%;min-height:100px;margin-bottom:16px;}
-
-
-/* VAST / Google IMA */
-/*
-   Penting untuk mobile: container IMA harus transparan.
-   Video iklan linear memakai elemen <video id="vid"> yang sama.
-   Overlay hitam di atasnya akan membuat iPhone/Android terlihat blank.
-*/
-#vastAdContainer{
-  position:absolute;inset:0;z-index:30;background:transparent;display:none;
-  align-items:center;justify-content:center;overflow:hidden;
-}
-#vastAdContainer.show{display:flex;}
-#vastAdSlot{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;}
-#vastAdSlot > div{width:100%!important;height:100%!important;}
 </style>
 </head>
 <body>
-<div class="player-wrap paused" id="wrap">
-  <video id="vid" preload="metadata" oncontextmenu="return false" disablePictureInPicture playsinline>
-    <source src="" type="video/mp4"/>
-  </video>
+<div class="player-wrap rmp-container paused" id="wrap">
+  <div class="rmp-content" id="rmpContent">
+    <video id="vid" class="rmp-video" preload="metadata" oncontextmenu="return false" disablePictureInPicture playsinline></video>
+  </div>
 
   <div class="grad"></div>
 
@@ -130,18 +112,6 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 
   <div class="loader" id="loader"><div class="loader-spinner"></div></div>
 
-  <!-- Banner ad overlay (legacy) -->
-  <div class="ad-overlay hide" id="adOverlay" aria-hidden="true">
-    <div class="ad-box">
-      <p class="ad-label">Advertisement</p>
-      <div class="ad-content" id="adContent"></div>
-    </div>
-  </div>
-
-  <!-- VAST / IMA ad container -->
-  <div id="vastAdContainer" aria-hidden="true">
-    <div id="vastAdSlot"></div>
-  </div>
 
   <div class="controls">
     <div class="prog-wrap" id="prog">
@@ -174,7 +144,6 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
   </div>
 </div>
 
-<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
 <script>
 // ============================================================
 // KONFIGURASI — hanya ubah bagian ini
@@ -186,19 +155,16 @@ var CDN_MAPS = {
 
 // Banner iklan dalam player (overlay sebelum video)
 var ADS_ENABLED        = false;  // true = aktif, false = nonaktif
-var SKIP_AFTER_SECONDS = 5;
+var SKIP_AFTER_SECONDS = 5; // fallback only; rmp-vast uses VAST skipoffset when provided
+
+// VAST pre-roll (tanpa Google IMA)
+var VAST_ENABLED = true;
+var VAST_URL = 'https://hdacode.com/get_data?blockID=452995&format=vast&page=https%3A%2F%2Findoxvx.cam&keywords=indo%20xvx%2Cbokep%20streaming%2Cbokep%20indo%20viral';
 
 // Smartlink — buka URL iklan 1x per halaman load saat klik play
 // Reset otomatis saat halaman di-refresh atau ditutup
 var SMARTLINK_ENABLED  = false;  // true = aktif, false = nonaktif
 var SMARTLINK_URL      = 'https://omg10.com/4/11946542';
-
-// VAST pre-roll — diputar sebelum video utama
-// true = aktif, false = nonaktif
-var VAST_ENABLED       = true;
-var VAST_URL           = 'https://hdacode.com/get_data?blockID=452995&format=vast&page=https%3A%2F%2Findoxvx.cam&keywords=indo%20xvx%2Cbokep%20streaming%2Cbokep%20indo%20viral';
-var VAST_TIMEOUT_MS    = 12000; // beri waktu lebih longgar untuk mobile
-// Skip dan click-through VAST ditangani sepenuhnya oleh Google IMA dari VAST response.
 // ============================================================
 
 var vid          = document.getElementById('vid');
@@ -209,22 +175,18 @@ var playIcon     = document.getElementById('playIcon');
 var volTrackWrap = document.getElementById('volTrackWrap');
 var volFill      = document.getElementById('volFill');
 var timeDisp     = document.getElementById('timeDisp');
-var adOverlay    = document.getElementById('adOverlay');
 var muteBtn      = document.getElementById('muteBtn');
 var volIcon      = document.getElementById('volIcon');
 var fsIcon       = document.getElementById('fsIcon');
 var loader       = document.getElementById('loader');
 var adShown      = false;
+var vastLoading  = false;
+var vastStarted  = false;
+var vastDone     = false;
 var slFired      = false; // smartlink sudah fired untuk halaman ini
+var rmpVast      = null;
 var touchTimer   = null;
 var controlTimer = null;
-var vastAdDisplayContainer = null;
-var vastAdsLoader          = null;
-var vastAdsManager         = null;
-var vastRequestInProgress  = false;
-var vastFinished            = false;
-var vastTimeoutTimer        = null;
-
 
 var ICON_FS   = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" fill="#fff"/>';
 var ICON_EXIT = '<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="#fff"/>';
@@ -237,6 +199,7 @@ var cdnKey       = parts.length > 1 && CDN_MAPS[parts[0]] ? parts[0] : null;
 var CDN_BASE_URL = cdnKey ? CDN_MAPS[cdnKey] : 'https://vidoway.click/file';
 var videoFile    = cdnKey ? parts.slice(1).join('/') : rawFile;
 if(videoFile){ vid.src = CDN_BASE_URL+'/'+videoFile; vid.load(); }
+if(VAST_ENABLED){ initVast(); }
 
 function fmt(s){ var m=Math.floor(s/60); return m+':'+(Math.floor(s%60)+'').padStart(2,'0'); }
 
@@ -263,197 +226,124 @@ function keepControlsVisible(){
   wrap.classList.add('show-controls');
 }
 
-// ── Legacy banner ad ──
-function showAd(){
-  adOverlay.classList.remove('hide');
-  adOverlay.setAttribute('aria-hidden','false');
+// ── VAST pre-roll via rmp-vast ──
+function setVastActive(active){
+  if(active) wrap.classList.add('vast-ad-active');
+  else wrap.classList.remove('vast-ad-active');
 }
-document.getElementById('adClose') && document.getElementById('adClose').addEventListener('click',function(){
-  adOverlay.classList.add('hide');
-  adOverlay.setAttribute('aria-hidden','true');
-  continuePlayback();
-});
 
-// ── Play / Pause ──
-function continuePlayback(){
-  if(vid.paused){
-    showLoader();
-    var p=vid.play();
-    if(p&&p.catch)p.catch(function(){ hideLoader(); });
-  }else{
-    vid.pause();
+function vastDebug(message, data){
+  if(window.console && console.log){
+    if(typeof data === 'undefined') console.log('[VAST]', message);
+    else console.log('[VAST]', message, data);
   }
 }
 
-function startVast(userGesture){
-  if(!VAST_ENABLED || !VAST_URL || vastFinished || vastRequestInProgress){
-    continuePlayback();
+function initVast(){
+  if(!VAST_ENABLED || rmpVast || !window.RmpVast) return;
+  vastDebug('initializing rmp-vast');
+  rmpVast = new RmpVast(wrap, {
+    ajaxTimeout: 8000,
+    creativeLoadTimeout: 10000,
+    maxNumRedirects: 10,
+    showControlsForAdPlayer: false,
+    enableVpaid: false,
+    labels: {
+      skipMessage: 'Lewati iklan',
+      closeAd: 'Tutup iklan',
+      textForInteractionUIOnMobile: 'Buka iklan'
+    }
+  });
+
+  rmpVast.on('adstarted', function(){
+    vastDebug('adstarted');
+    vastStarted = true;
+    vastLoading = false;
+    setVastActive(true);
+    hideLoader();
+  });
+  rmpVast.on('adloaded', function(){
+    vastDebug('adloaded');
+    vastLoading = true;
+    setVastActive(true);
+  });
+  rmpVast.on('adclick', function(){
+    // Click-through dan click-tracking ditangani rmp-vast.
+    // Jangan gunakan window.open tambahan di sini agar tidak terjadi double click.
+  });
+  rmpVast.on('adcomplete adskipped adclosed adpodcompleted', function(){
+    setVastActive(false);
+  });
+  rmpVast.on('aderror', function(e){
+    vastDebug('aderror', e);
+    vastLoading = false;
+    setVastActive(false);
+    // rmp-vast akan melanjutkan/fallback ke content bila memungkinkan.
+    setTimeout(function(){
+      if(vid.paused) vid.play().catch(function(){});
+    }, 0);
+  });
+  rmpVast.on('adtrackingcomplete', function(){
+    setVastActive(false);
+  });
+}
+
+function startVastThenContent(){
+  if(!VAST_ENABLED){
+    if(vid.paused){showLoader();vid.play().catch(function(){});}else{vid.pause();}
     return;
   }
-
-  vastRequestInProgress=true;
-  vid.pause();
-  var container=document.getElementById('vastAdContainer');
-  container.classList.add('show');
-  container.setAttribute('aria-hidden','false');
-
-  try{
-    // Must be created once and initialized directly from the user's tap/click.
-    vastAdDisplayContainer=new google.ima.AdDisplayContainer(
-      document.getElementById('vastAdSlot'), vid
-    );
-    if(userGesture !== false){
-      vastAdDisplayContainer.initialize();
-    } else {
-      finishVast();
-      return;
-    }
-
-    vastAdsLoader=new google.ima.AdsLoader(vastAdDisplayContainer);
-    vastAdsLoader.addEventListener(
-      google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-      onVastManagerLoaded,false
-    );
-    vastAdsLoader.addEventListener(
-      google.ima.AdErrorEvent.Type.AD_ERROR,
-      onVastError,false
-    );
-
-    var req=new google.ima.AdsRequest();
-    req.adTagUrl=VAST_URL;
-    req.linearAdSlotWidth=Math.max(1,wrap.clientWidth);
-    req.linearAdSlotHeight=Math.max(1,wrap.clientHeight);
-    req.nonLinearAdSlotWidth=Math.max(1,wrap.clientWidth);
-    req.nonLinearAdSlotHeight=Math.max(1,Math.floor(wrap.clientHeight*0.5));
-    req.setAdWillAutoPlay(false);
-    req.setAdWillPlayMuted(!!vid.muted);
-
-    vastAdsLoader.requestAds(req);
-    clearTimeout(vastTimeoutTimer);
-    vastTimeoutTimer=setTimeout(function(){
-      if(vastRequestInProgress){
-        console.warn('VAST timeout');
-        finishVast();
-      }
-    },VAST_TIMEOUT_MS);
-  }catch(e){
-    console.warn('VAST init error:',e);
-    finishVast();
+  initVast();
+  if(!rmpVast){
+    if(vid.paused){showLoader();vid.play().catch(function(){});}else{vid.pause();}
+    return;
   }
+  if(!vastDone && !vastLoading && !vastStarted){
+    vastLoading = true;
+    setVastActive(true);
+    vastDebug('loadAds', VAST_URL);
+    rmpVast.loadAds(VAST_URL);
+    return;
+  }
+  if(rmpVast.adOnStage){
+    if(rmpVast.adPaused) rmpVast.play();
+    else rmpVast.pause();
+    return;
+  }
+  if(vid.paused){showLoader();rmpVast.play();}else{rmpVast.pause();}
 }
 
-function onVastManagerLoaded(evt){
-  clearTimeout(vastTimeoutTimer);
-  try{
-    vastAdsManager=evt.getAdsManager(vid);
-
-    vastAdsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onVastError);
-    vastAdsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,function(){
-      vastRequestInProgress=true;
-      vid.pause();
-    });
-    vastAdsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,finishVast);
-    vastAdsManager.addEventListener(google.ima.AdEvent.Type.ALL_ADS_COMPLETED,finishVast);
-    vastAdsManager.addEventListener(google.ima.AdEvent.Type.COMPLETE,function(){
-      // IMA fires CONTENT_RESUME_REQUESTED for the normal linear-ad flow.
-    });
-    vastAdsManager.addEventListener(google.ima.AdEvent.Type.STARTED,onVastStarted);
-
-    var w=Math.max(1,wrap.clientWidth);
-    var h=Math.max(1,wrap.clientHeight);
-    vastAdsManager.init(w,h,google.ima.ViewMode.NORMAL);
-    vastAdsManager.start();
-  }catch(e){
-    console.warn('VAST manager error:',e);
-    finishVast();
-  }
-}
-
-function onVastStarted(){
-  /* IMA menangani UI iklan/skip-nya sendiri. Tidak ada tombol skip custom. */
-}
-
-function onVastError(e){
-  console.warn('VAST error:',e && e.getError ? e.getError() : e);
-  finishVast();
-}
-
-function finishVast(){
-  if(!vastRequestInProgress && vastFinished)return;
-  vastRequestInProgress=false;
-  vastFinished=true;
-  clearTimeout(vastTimeoutTimer);
-
-  var container=document.getElementById('vastAdContainer');
-  container.classList.remove('show');
-  container.setAttribute('aria-hidden','true');
-
-  if(vastAdsManager){
-    try{vastAdsManager.destroy();}catch(e){}
-    vastAdsManager=null;
-  }
-  if(vastAdsLoader){
-    try{vastAdsLoader.contentComplete();}catch(e){}
-    vastAdsLoader=null;
-  }
-  vastAdDisplayContainer=null;
-
-  // Restore content source before resuming after the ad.
-  if(videoFile){
-    var contentSrc=CDN_BASE_URL+'/'+videoFile;
-    if(vid.src !== contentSrc){
-      vid.src=contentSrc;
-      vid.load();
-    }
-  }
-  continuePlayback();
-}
-
-// Smartlink + VAST + banner
 function tryPlay(){
-  // Smartlink is independent from VAST. It fires once per page load.
+  // Smartlink hanya dipicu oleh gesture Play pertama, bukan oleh klik iklan VAST.
   if(SMARTLINK_ENABLED && !slFired){
-    slFired=true;
-    try{window.open(SMARTLINK_URL,'_blank','noopener,noreferrer');}catch(e){}
+    slFired = true;
+    window.open(SMARTLINK_URL, '_blank');
   }
-
-  if(!vastFinished && VAST_ENABLED){
-    if(!vastRequestInProgress){
-      // This call is made directly from the user's click/tap.
-      startVast(true);
-    }
-    return;
-  }
-
-  if(ADS_ENABLED && !adShown){
-    adShown=true;
-    showAd();
-    // Legacy banner has no VAST skip control.
-    return;
-  }
-
-  continuePlayback();
+  startVastThenContent();
 }
 
 wrap.addEventListener('click',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#vastAdContainer'))return;
-  if(vastRequestInProgress)return;
+  if(e.target.closest('.controls'))return;
+  if(wrap.classList.contains('vast-ad-active'))return;
   tryPlay();
 });
 
 var lastTap=0;
 wrap.addEventListener('touchstart',function(e){
-  if(e.target.closest('.controls')||e.target.closest('.ad-overlay')||e.target.closest('#vastAdContainer'))return;
-  if(vastRequestInProgress)return;
+  if(e.target.closest('.controls'))return;
+  if(wrap.classList.contains('vast-ad-active'))return;
   showControls();
-  wrap.classList.add('touched');
-  clearTimeout(touchTimer);
-  touchTimer=setTimeout(function(){wrap.classList.remove('touched');},3000);
-  // A single user tap must directly initialize IMA on mobile.
-  tryPlay();
+  var now=Date.now();
+  if(now-lastTap<300){tryPlay();lastTap=0;}
+  else{
+    lastTap=now;
+    wrap.classList.add('touched');
+    clearTimeout(touchTimer);
+    touchTimer=setTimeout(function(){wrap.classList.remove('touched');},3000);
+  }
 },{passive:true});
 
-document.getElementById('playBtn').addEventListener('click',function(e){e.stopPropagation();if(vastRequestInProgress)return;tryPlay();});
+document.getElementById('playBtn').addEventListener('click',function(e){e.stopPropagation();tryPlay();});
 
 vid.addEventListener('play',function(){
   wrap.classList.remove('paused');wrap.classList.add('started');
@@ -466,8 +356,6 @@ vid.addEventListener('pause',function(){
   keepControlsVisible();
 });
 vid.addEventListener('timeupdate',function(){
-  // Selama VAST diputar, jangan tampilkan progress iklan sebagai progress video utama.
-  if(vastRequestInProgress)return;
   if(vid.duration){
     bar.style.width=(vid.currentTime/vid.duration*100)+'%';
     timeDisp.textContent=fmt(vid.currentTime)+' / '+fmt(vid.duration);
@@ -478,15 +366,17 @@ vid.addEventListener('ended',function(){
   wrap.classList.add('paused');
   playIcon.innerHTML='<path d="M8 5v14l11-7z" fill="#fff"/>';
   adShown=false;
-  if(!vastRequestInProgress)vastFinished=false;
+  vastDone=false;
+  vastStarted=false;
+  vastLoading=false;
 });
 
 // Progress seek
 var dragging=false;
 function seekTo(e){
+  if(wrap.classList.contains('vast-ad-active'))return;
   var r=prog.getBoundingClientRect();
   var x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
-  if(vastRequestInProgress)return;
   if(vid.duration)vid.currentTime=Math.max(0,Math.min(1,x/r.width))*vid.duration;
 }
 prog.addEventListener('mousedown',function(e){dragging=true;keepControlsVisible();seekTo(e);});
@@ -499,6 +389,7 @@ prog.addEventListener('touchmove',function(e){keepControlsVisible();seekTo(e);e.
 function applyVolume(v){
   v=Math.max(0,Math.min(1,v));
   vid.volume=v;vid.muted=(v===0);
+  if(rmpVast && rmpVast.adOnStage){try{rmpVast.volume=v;}catch(e){}}
   volFill.style.width=(v*100)+'%';
   updateVolIcon(v,vid.muted);
 }
@@ -529,18 +420,6 @@ muteBtn.addEventListener('click',function(e){
   if(vid.muted||vid.volume===0){vid.muted=false;applyVolume(vid._lastVolume||1);}
   else{vid._lastVolume=vid.volume;vid.muted=true;volFill.style.width='0%';updateVolIcon(0,true);}
 });
-
-// Resize IMA mengikuti ukuran player/orientasi layar.
-function resizeVast(){
-  if(!vastAdsManager)return;
-  try{
-    vastAdsManager.resize(
-      Math.max(1,wrap.clientWidth),
-      Math.max(1,wrap.clientHeight),
-      google.ima.ViewMode.NORMAL
-    );
-  }catch(e){}
-}
 
 // Fullscreen
 document.getElementById('fsBtn').addEventListener('click',function(e){
@@ -589,10 +468,10 @@ function onFsChange(){
 document.addEventListener('fullscreenchange',onFsChange);
 document.addEventListener('webkitfullscreenchange',onFsChange);
 window.addEventListener('orientationchange',function(){
-  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();setTimeout(updateFullscreenSize,300);} resizeVast();
+  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();setTimeout(updateFullscreenSize,300);}
 });
 window.addEventListener('resize',function(){
-  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();updateFullscreenSize();} resizeVast();
+  if(document.fullscreenElement||document.webkitFullscreenElement){applyForceLandscape();updateFullscreenSize();}
 });
 </script>
 </body>
