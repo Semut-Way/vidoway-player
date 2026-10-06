@@ -258,6 +258,26 @@ function dbgAd(name,ev){
 }
 dbg('UA: '+navigator.userAgent.slice(0,90));
 
+// ===== TES JARINGAN: ambil VAST langsung dari halaman (meniru request IMA) =====
+function dbgNetTest(){
+  var u=VAST_TAG_URL;
+  function t(label,opts){
+    var t0=Date.now();
+    return fetch(u,opts).then(function(r){
+      return r.text().then(function(b){
+        dbg('NET '+label+' OK status='+r.status+' type='+r.type+' '+(Date.now()-t0)+'ms len='+b.length+' body='+b.replace(/\s+/g,' ').slice(0,50));
+      });
+    }).catch(function(e){
+      dbg('NET '+label+' GAGAL '+e.name+': '+e.message+' ('+(Date.now()-t0)+'ms)');
+    });
+  }
+  dbg('online='+navigator.onLine+' conn='+(navigator.connection?navigator.connection.effectiveType+'/'+navigator.connection.rtt+'ms':'-')+' origin='+location.origin+' iframe='+(window.top!==window));
+  t('cors',{mode:'cors'})
+    .then(function(){return t('cors+cred',{mode:'cors',credentials:'include'});})
+    .then(function(){return t('no-cors',{mode:'no-cors'});});
+}
+window.addEventListener('load',dbgNetTest);
+
 function initIMA(){
   dbg('initIMA | IMA v'+(window.google&&google.ima?google.ima.VERSION:'TIDAK ADA'));
   if(!VAST_ENABLED||!window.google||!window.google.ima)return;
