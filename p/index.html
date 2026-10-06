@@ -251,7 +251,10 @@ function requestAds(){
 }
 
 function onAdsManagerLoaded(e){
-  adsManager=e.getAdsManager(vid);
+  // FIX: paksa IMA memakai file MP4 saja (hindari stream HLS/m3u8 yang bisa gagal tampil di HP)
+  var adsRenderingSettings=new google.ima.AdsRenderingSettings();
+  adsRenderingSettings.mimeTypes=['video/mp4'];
+  adsManager=e.getAdsManager(vid,adsRenderingSettings);
   adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
 
   // Pause video saat iklan mulai
