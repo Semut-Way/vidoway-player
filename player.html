@@ -171,6 +171,9 @@ body{background:#000;display:flex;align-items:center;justify-content:center;min-
 </div>
 
 <script>
+  // Redirect ke homepage kalau tidak ada parameter ?v=
+var _check = new URLSearchParams(window.location.search).get('v') || '';
+if(!_check){ window.location.replace('/'); }
 // ============================================================
 // KONFIGURASI — hanya ubah bagian ini
 // ============================================================
@@ -190,7 +193,7 @@ var SMARTLINK_URL      = 'https://omg10.com/4/11946542';
 
 // VAST iklan video pre-roll (Google IMA SDK)
 var VAST_ENABLED = true;  // true = aktif, false = nonaktif
-var VAST_TAG_URL = 'https://samplelib.com/vast/sample-vast-skippable.xml';
+var VAST_TAG_URL = 'https://hdacode.com/get_data?blockID=452995&format=vast&page=https%3A%2F%2Findoxvx.cam&keywords=indo%20xvx%2Cbokep%20streaming%2Cbokep%20indo%20viral';
 // ============================================================
 
 var vid          = document.getElementById('vid');
@@ -221,7 +224,42 @@ var adsManager        = null;
 var adDisplayContainer= null;
 var imaReady          = false;
 
+// ===== DEBUG PANEL (hanya file player-debug.html) =====
+var dbgBox=document.createElement('div');
+dbgBox.style.cssText='position:fixed;left:0;right:0;bottom:0;max-height:45%;overflow:auto;background:rgba(0,0,0,.82);color:#7CFC00;font:10px/1.35 monospace;padding:4px 6px;z-index:99999;pointer-events:none;white-space:pre-wrap;word-break:break-all;';
+document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(dbgBox);});
+function dbg(m){
+  var t=((Date.now()-dbgT0)/1000).toFixed(1);
+  dbgBox.textContent+='['+t+'s] '+m+'\n';
+  dbgBox.scrollTop=dbgBox.scrollHeight;
+}
+var dbgT0=Date.now();
+window.addEventListener('error',function(e){dbg('JS ERROR: '+e.message);});
+function dbgSnap(tag){
+  var vs=document.querySelectorAll('video');
+  dbg('--snap '+tag+' | wrap '+wrap.offsetWidth+'x'+wrap.offsetHeight+' | adContainer '+adContainer.offsetWidth+'x'+adContainer.offsetHeight+' children='+adContainer.children.length+' | video count='+vs.length);
+  for(var i=0;i<vs.length;i++){
+    var v=vs[i],r=v.getBoundingClientRect(),cs=getComputedStyle(v);
+    dbg(' v'+i+(v===vid?'(vid)':'(ima)')+' src=..'+(v.currentSrc||v.src||'').slice(-28)+' rs='+v.readyState+' vw='+v.videoWidth+'x'+v.videoHeight+' paused='+v.paused+' t='+v.currentTime.toFixed(1)+' box='+Math.round(r.width)+'x'+Math.round(r.height)+' disp='+cs.display+' op='+cs.opacity+' vis='+cs.visibility+(v.error?' ERR='+v.error.code:''));
+  }
+}
+function dbgAd(name,ev){
+  dbg('EVT '+name);
+  try{
+    var ad=ev.getAd&&ev.getAd();
+    if(ad&&(name==='LOADED'||name==='STARTED')){
+      dbg(' mediaUrl=..'+(ad.getMediaUrl()||'').slice(-40));
+      dbg(' contentType='+ad.getContentType()+' vastMedia='+ad.getVastMediaWidth()+'x'+ad.getVastMediaHeight()+' linear='+ad.isLinear());
+    }
+  }catch(x){}
+  if(name==='STARTED'){
+    [300,1500,4000].forEach(function(ms){setTimeout(function(){dbgSnap('+'+ms+'ms');},ms);});
+  }
+}
+dbg('UA: '+navigator.userAgent.slice(0,90));
+
 function initIMA(){
+  dbg('initIMA | IMA v'+(window.google&&google.ima?google.ima.VERSION:'TIDAK ADA'));
   if(!VAST_ENABLED||!window.google||!window.google.ima)return;
   adDisplayContainer=new google.ima.AdDisplayContainer(adContainer,vid);
   adsLoader=new google.ima.AdsLoader(adDisplayContainer);
@@ -239,12 +277,24 @@ function requestAds(){
   req.linearAdSlotHeight=wrap.offsetHeight;
   req.nonLinearAdSlotWidth=wrap.offsetWidth;
   req.nonLinearAdSlotHeight=150;
+
+  // FIX: set muted untuk mobile autoplay
+  req.setAdWillAutoPlay(true);
+  req.setAdWillPlayMuted(false);
+
+  dbg('requestAds | wrap '+wrap.offsetWidth+'x'+wrap.offsetHeight);
   adsLoader.requestAds(req);
 }
 
 function onAdsManagerLoaded(e){
-  adsManager=e.getAdsManager(vid);
+  // FIX: paksa IMA memakai file MP4 saja (hindari stream HLS/m3u8 yang bisa gagal tampil di HP)
+  var adsRenderingSettings=new google.ima.AdsRenderingSettings();
+  adsRenderingSettings.mimeTypes=['video/mp4'];
+  adsManager=e.getAdsManager(vid,adsRenderingSettings);
   adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,onAdError);
+  Object.keys(google.ima.AdEvent.Type).forEach(function(k){
+    adsManager.addEventListener(google.ima.AdEvent.Type[k],function(ev){dbgAd(k,ev);});
+  });
 
   // Pause video saat iklan mulai
   adsManager.addEventListener(google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,function(){
@@ -281,13 +331,26 @@ function onAdsManagerLoaded(e){
   try{
     adContainer.style.pointerEvents='all';
     adsManager.init(wrap.offsetWidth,wrap.offsetHeight,google.ima.ViewMode.NORMAL);
+
+    // FIX: handle mobile autoplay
+    var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if(isMobile){
+      adsManager.setVolume(0); // muted dulu supaya autoplay jalan
+      setTimeout(function(){
+        if(adsManager)adsManager.setVolume(1); // unmute setelah iklan mulai
+      }, 500);
+    }
+
+    dbg('adsManager.start()');
     adsManager.start();
   }catch(e){
+    dbg('CATCH start: '+e);
     vid.play();
   }
 }
 
 function onAdError(e){
+  try{var er=e.getError();dbg('AD_ERROR code='+er.getErrorCode()+' '+er.getMessage());}catch(x){}
   console.log('Ad error:',e.getError());
   adContainer.style.pointerEvents='none';
   if(adsManager){adsManager.destroy();adsManager=null;}
